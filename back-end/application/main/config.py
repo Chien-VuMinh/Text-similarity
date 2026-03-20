@@ -14,6 +14,8 @@ class GlobalConfig(BaseSettings):
 
     GEMINI_API_KEY: Optional[str] = Field(None, env="GEMINI_API_KEY")
 
+    CHUNK_LIMIT: int = 20
+
     class Config:
         env_file: str = '.env'
 

@@ -102,6 +102,7 @@ function InputForm({
 							>
 							<option value="bge">BGE</option>
 							<option value="gemini">Gemini</option>
+							<option value="qwen">Qwen</option>
 							{/* Thêm model*/}
 						</select>
 					</div>

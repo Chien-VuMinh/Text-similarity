@@ -1,4 +1,6 @@
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 from application.main.services.sentences_handler_service import service
@@ -12,4 +14,7 @@ class Data(BaseModel):
 
 @router.post('')
 async def sentences_handler(data: Data):
-    return await service.similarity_cal(data.sen1, data.sen2, data.model)
+    try:
+        return await service.similarity_cal(data.sen1, data.sen2, data.model)
+    except HTTPException as e:
+        raise e

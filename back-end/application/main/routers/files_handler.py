@@ -1,6 +1,6 @@
 from fastapi import File, UploadFile, Form
 from fastapi.routing import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from application.main.services.files_handler_service import service
 
@@ -13,7 +13,10 @@ async def files_handler(
     model: str = Form(...)
 ):
     try:
-        return await service.similarity_cal(sen1, file, model)
+        return StreamingResponse(
+            service.similarity_cal(sen1, file, model),
+            media_type="text/plain"    
+        )
     except:
         return JSONResponse(
             status_code=400,

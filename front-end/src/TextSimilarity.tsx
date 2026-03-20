@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import Header from './components/Header';
 import InputForm from './components/InputForm';
-import type { InputMode } from './components/types';
+import type { ApiResponse, InputMode } from './components/types';
 import ResultDisplay from './components/ResultDisplay';
 
 const TextSimilarityForm: React.FC = () => {
@@ -10,7 +10,7 @@ const TextSimilarityForm: React.FC = () => {
 	const [sen2, setSen2] = useState<string>('');
 	const [model, setModel] = useState<string>('gemini'); // default gemini
 	const [loading, setLoading] = useState<boolean>(false);
-	const [result, setResult] = useState<any>(null);
+	const [result, setResult] = useState<ApiResponse | string | null>(null)
 	const [error, setError] = useState<string | null>(null);
 	const [mode, setMode] = useState<InputMode>('text')
 	const [file, setFile] = useState<File>()
@@ -29,13 +29,14 @@ const TextSimilarityForm: React.FC = () => {
 		setResult(null);
 
 		try {
-			const response = await axios.post('http://127.0.0.1:8000/api/sentences', 
+			const response = await axios.post(import.meta.env.VITE_BACKEND_URL + '/sentences', 
 				{sen1, sen2, model}, 
 				{timeout: 60000,}
 			);
 
-			setResult(response.data);
+			setResult(response.data)
 		} catch (err: any) {
+			console.log(err.response?.data)
 			setError(err.response?.data?.detail || 'Có lỗi xảy ra khi gọi API. Kiểm tra backend!');
 			console.error(err);
 		} finally {
@@ -71,15 +72,15 @@ const TextSimilarityForm: React.FC = () => {
 		</div>
 		)}
 
-		{
-			result && 
+		{result && (result as ApiResponse).sen1_sentences && (result as ApiResponse).sen2_sentences && 
 			<ResultDisplay
-				result={result}
+				result={result as ApiResponse}
 				hoveredSen1={hoveredSen1}
 				hoveredSen2={hoveredSen2}
 				setHoveredSen1={setHoveredSen1}
 				setHoveredSen2={setHoveredSen2}
-			/>}
+			/>
+		}
 	</div>
 	);
 };
