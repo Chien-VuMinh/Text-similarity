@@ -15,14 +15,13 @@ class SentencesHandlerService(object):
 
     async def input_processing(self, sen: str, model_tag: str, max_len: int = inf):
         splitted_sentence = [s.strip() for s in re.split(r'(?<=[.?!])', sen) if s.strip()]
-        lower_splitted_sentence = [s.lower() for s in splitted_sentence]
-        if len(lower_splitted_sentence) > max_len:
+        if len(splitted_sentence) > max_len:
             raise HTTPException(status_code=400, detail="Với văn bản quá lớn xin hãy dùng chức năng upload file.")
         
         try:
             run_opt, model = settings.MODEL.get(model_tag)
             embeddings = await embedding_controller.embedding_to_use[run_opt].embed_chunks(
-                lower_splitted_sentence,
+                splitted_sentence,
                 model
             )
         except:

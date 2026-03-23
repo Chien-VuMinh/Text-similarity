@@ -1,18 +1,22 @@
 import { useMemo } from 'react'
-import type { ApiResponse } from './types'
+import type { ApiChunk, ApiResponse } from './types'
 
 interface ResultDisplayProps {
-    result: ApiResponse
+    results: ApiResponse
+    currentChunk: number
     hoveredSen1: number | null
     hoveredSen2: number | null
+    setCurrentChunk: (ind: number) => void
     setHoveredSen1: (ind: number | null) => void
     setHoveredSen2: (ind: number | null) => void
 }
 
 function ResultDisplay({
-    result, hoveredSen1, hoveredSen2,
-    setHoveredSen1, setHoveredSen2
+    results, currentChunk, hoveredSen1, hoveredSen2,
+    setCurrentChunk, setHoveredSen1, setHoveredSen2
     } : ResultDisplayProps) {
+        const result: ApiChunk = results[currentChunk]
+        const len: number = results.length
         
         const reverseMatches: Record<number, number[]> = useMemo(() =>{
             const matches = result?.matches || {}
@@ -27,12 +31,27 @@ function ResultDisplay({
             return rev
         }, [result])
 
+        const getNextChunk = ((currentChunk: number, senIdx: number) : number => {
+            let nextChunk = currentChunk + 1
+            for (nextChunk; nextChunk < len; nextChunk++) {
+                const matches = results[nextChunk].matches
+                if (senIdx in matches) return nextChunk
+            }
+
+            for (nextChunk = 0; nextChunk < currentChunk; nextChunk++) {
+                const matches = results[nextChunk].matches
+                if (senIdx in matches) return nextChunk
+            }
+
+            return currentChunk
+        })
+
         return (
             <div className="mt-12 w-full max-w-6xl">
                 <h2 className="text-3xl font-bold text-center text-primary mb-10">
                     Kết quả Phân tích Tương đồng
                 </h2>
-
+                <h2>Kết quả - Chunk ID: {result.chunk_id}</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     {/* ==================== ĐOẠN VĂN BẢN 1 (SEN1) ==================== */}
                     <div className="bg-white rounded-3xl p-10 shadow-xl border border-gray-100">
@@ -49,6 +68,7 @@ function ResultDisplay({
                                 return (
                                     <span
                                         key={idx}
+                                        onClick={() => setCurrentChunk(getNextChunk(currentChunk, idx))}
                                         onMouseEnter={() => {
                                             setHoveredSen1(idx);
                                             setHoveredSen2(null);
@@ -102,7 +122,7 @@ function ResultDisplay({
                 </div>
 
                 {/* Thông báo nếu không có tương đồng */}
-                {Object.keys(result.matches).length === 0 && (
+                {Object.keys(result.matches || {}).length === 0 && (
                 <div className="mt-8 text-center text-amber-600 bg-amber-50 border border-amber-200 p-6 rounded-2xl text-lg">
                     Không tìm thấy câu nào tương đồng giữa hai đoạn văn bản.
                 </div>

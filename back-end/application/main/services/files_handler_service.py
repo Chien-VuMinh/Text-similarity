@@ -4,6 +4,7 @@ import fitz
 import re
 import asyncio
 import numpy as np
+import json
 
 from fastapi import Form, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
@@ -51,17 +52,20 @@ class FilesHandlerService(object):
             )
         
         def get_content():
+            file_result = ''
             if (file_extension == 'pdf'):
                 contents = []
                 with fitz.open(file_path) as f:
                     for page in f:
                         contents.append(page.get_text())
-                file_content = ''.join(contents)
+                file_result = ''.join(contents)
             else:
                 with open(file_path, 'r', encoding='utf-8') as f:
-                    file_content = f.read()
+                    file_result = f.read()
+
+            return file_result
         try:
-            await asyncio.to_thread(get_content)
+            file_content = await asyncio.to_thread(get_content)
         except:
             raise HTTPException(
                 status_code=400,
@@ -74,11 +78,11 @@ class FilesHandlerService(object):
         embed1 = await self.embedding_sen(lower_splitted_sentence_1, model_tag)
 
         file_into_sentences = [s.strip() for s in re.split(r'(?<=[.?!])', file_content) if s.strip()]
-        lower_file_into_sentences = [s.lower() for s in file_into_sentences]
 
         chunk_size = settings.CHUNK_LIMIT
-        for i in range(0, len(lower_file_into_sentences), chunk_size):
-            chunk = lower_file_into_sentences[i : i + chunk_size]
+        for i in range(0, len(file_into_sentences), chunk_size):
+            chunk = file_into_sentences[i : i + chunk_size]
+
             embed_chunk = await self.embedding_sen(chunk, model_tag)
             
             scores = np.dot(embed1, embed_chunk.T)
@@ -86,14 +90,14 @@ class FilesHandlerService(object):
             unique_row, indice = np.unique(row, return_index=True)
             adj_array = dict(zip(unique_row.tolist(), list(map(lambda x: x.tolist(), np.split(col, indice[1:])))))
 
-            yield JSONResponse(
-                status_code=200,
-                content={
+            yield json.dumps(
+                {
+                    "status_code":200,
                     "sen1_sentences": splitted_sentence_1,
                     "sen2_sentences": chunk,
                     "matches": adj_array,
                     "chunk_id": i // chunk_size + 1
                 }
-            )
+            ) + '\n'
 
 service = FilesHandlerService()

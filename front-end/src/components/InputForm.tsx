@@ -6,7 +6,6 @@ interface InputFormProps {
     sen2: string
     model: string
     mode: InputMode
-    file: File | undefined
     loading: boolean
     setSen1: (v: string) => void
     setSen2: (v: string) => void
@@ -17,7 +16,7 @@ interface InputFormProps {
 }
 
 function InputForm({
-    sen1, sen2, model, mode, file, loading,
+    sen1, sen2, model, mode, loading,
     setSen1, setSen2, setModel, setMode, setFile, handleSubmit,
     } : InputFormProps) {
     return (
@@ -57,7 +56,9 @@ function InputForm({
 						{/* Dropdown */}
 						<select
 							value={mode}
-							onChange={(e) => setMode(e.target.value as InputMode)}
+							onChange={(e) => {setMode(e.target.value as InputMode);
+								console.log(e.target.value)
+							}}
 							className="w-36 p-2 border border-gray-300 rounded-lg bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary shadow-sm"
 							>
 							<option value="text">Text</option>
