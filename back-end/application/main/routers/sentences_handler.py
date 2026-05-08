@@ -11,10 +11,11 @@ class Data(BaseModel):
     sen1: str
     sen2: str
     model: str
+    threshold: float
 
 @router.post('')
 async def sentences_handler(data: Data):
     try:
-        return await service.similarity_cal(data.sen1, data.sen2, data.model)
+        return await service.similarity_cal(data.sen1, data.sen2, data.model, data.threshold)
     except HTTPException as e:
         raise e

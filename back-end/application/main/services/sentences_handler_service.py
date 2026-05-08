@@ -14,7 +14,7 @@ class SentencesHandlerService(object):
         pass
 
     async def input_processing(self, sen: str, model_tag: str, max_len: int = inf):
-        splitted_sentence = [s.strip() for s in re.split(r'(?<=[.?!])', sen) if s.strip()]
+        splitted_sentence = [s for s in re.split(r'(?<=[.?!])', sen) if s.strip()]
         if len(splitted_sentence) > max_len:
             raise HTTPException(status_code=400, detail="Với văn bản quá lớn xin hãy dùng chức năng upload file.")
         
@@ -30,7 +30,13 @@ class SentencesHandlerService(object):
         return splitted_sentence, embeddings
     
 
-    async def similarity_cal(self, sen1: str, sen2: str, model_tag: str):
+    async def similarity_cal(
+            self, 
+            sen1: str, 
+            sen2: str, 
+            model_tag: str, 
+            threshold: float = 0.7
+    ):
         try:
             lst1, embed1 = await self.input_processing(sen1, model_tag)
             lst2, embed2 = await self.input_processing(sen2, model_tag, settings.CHUNK_LIMIT)
@@ -43,7 +49,7 @@ class SentencesHandlerService(object):
             )
 
         scores = np.dot(embed1, embed2.T)
-        row, col = np.where(scores > 0.7)
+        row, col = np.where(scores > threshold)
         unique_row, indice = np.unique(row, return_index=True)
         adj_array = dict(zip(unique_row.tolist(), list(map(lambda x: x.tolist(), np.split(col, indice[1:])))))
         return JSONResponse(

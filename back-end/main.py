@@ -37,7 +37,11 @@ def get_application():
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         return JSONResponse(
             status_code=422,
-            content={"response": "The input is incorrect. Please check again."}
+            content={
+                "message": "Validation Error",
+                "detail": exc.errors(),
+                "body": exc.body
+            }
         )
     
     _app.include_router(IncludeAPIRouter())

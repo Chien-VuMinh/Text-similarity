@@ -5,6 +5,7 @@ import re
 import asyncio
 import numpy as np
 import json
+import chromadb
 
 from fastapi import Form, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
@@ -17,7 +18,8 @@ from application.initializer import embedding_controller
 
 class FilesHandlerService(object):
     def __init__(self):
-        pass
+        self.client = chromadb.PersistentClient(path=settings.APP_CONFIG.VEC_DB)
+        self.collection = self.client.get_collection(name="vec_db")
 
     async def embedding_sen(self, sen: List[str], model_tag: str):        
         try:
@@ -81,26 +83,25 @@ class FilesHandlerService(object):
         return output1, output2
 
     async def similarity_cal(self,
-        input1: str | UploadFile,
-        input2: str | List[UploadFile],
+        input: str | UploadFile,
         model_tag: str,
         threshold: float = 0.7
     ):
-        # INPUT1 HANDLER
+        # INPUT HANDLER
         splitted_sentence_1: List[str] = []
         clean_splitted_sentence_1: List[str] = []
-        # input1 is a sentence
+        # input is a sentence
         try:
             splitted_sentence_1, clean_splitted_sentence_1 = await asyncio.to_thread(
                 self.clean_sen,
-                input1
+                input
             )
-        # input1 is a file
+        # input is a file
         except:            
             try:
                 splitted_sentence_1, clean_splitted_sentence_1 = await asyncio.to_thread(
                     self.get_file_content,
-                    input1
+                    input
                 )
             except:
                 raise HTTPException(
@@ -110,41 +111,19 @@ class FilesHandlerService(object):
         embed1 = await self.embedding_sen(clean_splitted_sentence_1, model_tag)
 
 
-        # INPUT2 HANDLER
-        splitted_sentence_2: List[str] = []
-        clean_splitted_sentence_2: List[str] = []
-        try:
-            splitted_sentence_2, clean_splitted_sentence_2 = await asyncio.to_thread(
-                self.clean_sen,
-                input2
-            )
-        except:
-            try:
-                for f in input2:
-                    splitted, clean = await asyncio.to_thread(
-                        self.get_file_content,
-                        f
-                    )
-                    splitted_sentence_2.extend(splitted)
-                    clean_splitted_sentence_2.extend(clean)
-            except:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Không thể trích xuất dữ liệu từ Input 2"
-                )
-
         chunk_size = settings.CHUNK_LIMIT
-        for i in range(0, len(splitted_sentence_2), chunk_size):
-            chunk = clean_splitted_sentence_2[i : i + chunk_size]
-
-            # get chunk embed
-            embed_chunk = await self.embedding_sen(chunk, model_tag)
-            
+        offset = 0
+        for i in range(0, self.collection.count(), chunk_size):
+            batch = self.collection.get(
+                limit=chunk_size, 
+                offset=i,
+                include=["documents", "embeddings"]
+            )            
             # cosine score + adj array
             adj_array = await asyncio.to_thread(
                 self.adj_array,
                 embed1,
-                embed_chunk,
+                batch['embeddings'],
                 threshold
             )
 
@@ -152,10 +131,12 @@ class FilesHandlerService(object):
                 {
                     "status_code":200,
                     "sen1_sentences": splitted_sentence_1,
-                    "sen2_sentences": splitted_sentence_2[i : i + chunk_size],
+                    "sen2_sentences": batch['documents'],
                     "matches": adj_array,
                     "chunk_id": i // chunk_size + 1
                 }
             ) + '\n'
 
 service = FilesHandlerService()
+
+# uv run python -m application.main.services.db_handler_service

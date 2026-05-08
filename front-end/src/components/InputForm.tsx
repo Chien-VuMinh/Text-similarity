@@ -1,23 +1,32 @@
 import React from 'react'
 import type { InputMode } from './types'
+import SystemConfig from './SystemConfig'
+import Input1 from './Input1'
+import Input2 from './Input2'
 
 interface InputFormProps {
     sen1: string
     sen2: string
+	file2: File[]
     model: string
-    mode: InputMode
+	threshold: number
+	mode1: InputMode
+    mode2: InputMode
     loading: boolean
     setSen1: (v: string) => void
     setSen2: (v: string) => void
     setModel: (v: string) => void
-    setMode: (v: InputMode) => void
-    setFile: (file: File | undefined) => void
+	setThreshold: (v: number) => void
+    setMode1: (v: InputMode) => void
+	setMode2: (v: InputMode) => void
+	setFile1: React.Dispatch<React.SetStateAction<File[]>>
+    setFile2: React.Dispatch<React.SetStateAction<File[]>>
     handleSubmit: (e: React.SubmitEvent) => void
 }
 
 function InputForm({
-    sen1, sen2, model, mode, loading,
-    setSen1, setSen2, setModel, setMode, setFile, handleSubmit,
+    sen1, sen2, file2, model, threshold, mode1, mode2, loading,
+    setSen1, setSen2, setModel, setThreshold, setMode1, setMode2, setFile1, setFile2, handleSubmit,
     } : InputFormProps) {
     return (
         <form
@@ -25,90 +34,34 @@ function InputForm({
 		className="w-full max-w-5xl bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-200"
 		>
 			{/* Hai textarea nằm ngang */}
-			<div className="flex flex-col md:flex-row gap-6 p-8">
-				{/* Sen1 */}
-				<div className="flex-1">
-					<label htmlFor="sen1" className="block text-lg font-semibold text-gray-800 mb-3">
-						Đoạn văn bản 1 (Sen1)
-					</label>
+			<div className="flex flex-col md:flex-row gap-6 p-8 pb-0">
+				{/* Input1 */}
+				<Input1 
+				    mode1={mode1}
+					sen1={sen1}
+					setSen1={setSen1}
+					setFile1={setFile1}
+					setMode1={setMode1}
+				/>
 
-					<textarea
-						id="sen1"
-						value={sen1}
-						onChange={(e) => setSen1(e.target.value)}
-						placeholder={sen1 ? sen1 : "Nhập đoạn văn bản đầu tiên..."}
-						rows={10}
-						className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none shadow-sm transition duration-200 hover:shadow-md"
-						required
-					/>
-				</div>
+				{/* Input2 */}
+				<Input2
+				    mode2={mode2}
+					sen2={sen2}
+					file2={file2}
+					setSen2={setSen2}
+					setFile2={setFile2}
+					setMode2={setMode2}
+				/>
 
-				{/* Sen2 + Dropdown */}
-				<div className="flex-1 flex flex-col">
-					<div className="h-7 flex items-center justify-between mb-3">
-						<label
-						htmlFor="sen2"
-						className="block text-lg font-semibold text-gray-800"
-						>
-						Đoạn văn bản 2 (Sen2)
-						</label>
-
-						{/* Dropdown */}
-						<select
-							value={mode}
-							onChange={(e) => {setMode(e.target.value as InputMode);
-								console.log(e.target.value)
-							}}
-							className="w-36 p-2 border border-gray-300 rounded-lg bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary shadow-sm"
-							>
-							<option value="text">Text</option>
-							<option value="file">File</option>
-							<option value="db">Database</option>
-						</select>
-					</div>
-					{
-						mode === 'text' ?
-						<textarea
-							id="sen2"
-							value={sen2}
-							onChange={(e) => setSen2(e.target.value)}
-							placeholder={sen2 ? sen2 : "Nhập đoạn văn bản thứ hai..."}
-							rows={10}
-							className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none shadow-sm transition duration-200 hover:shadow-md flex-1"
-							required
-						/> : (
-							mode === 'file' ?
-							<input
-								type="file"
-								id="sen2-file"
-								onChange={(e) => setFile(e.target.files?.[0])}
-								className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary shadow-sm"
-							/> : <></>
-						)
-					}
-
-					{/* Dropdown model */}
-					<div className="mt-4">
-						<div className='h-7'>
-							<label htmlFor="model" className="block text-lg font-semibold text-gray-800 mb-2">
-								Chọn mô hình
-							</label>
-						</div>
-						
-						<select
-							id="model"
-							value={model}
-							onChange={(e) => setModel(e.target.value)}
-							className="w-30 p-3 border border-gray-300 rounded-xl bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary shadow-sm transition duration-200 hover:shadow-md"
-							>
-							<option value="bge">BGE</option>
-							<option value="gemini">Gemini</option>
-							<option value="qwen">Qwen</option>
-							{/* Thêm model*/}
-						</select>
-					</div>
-				</div>
 			</div>
+
+			<SystemConfig 
+				model={model}
+				threshold={threshold}
+				setModel={setModel}
+				setThreshold={setThreshold}
+			/>
 
 			{/* Button submit */}
 			<div className="px-8 pb-8 flex justify-center">

@@ -8,20 +8,63 @@ import ResultDisplay from './components/ResultDisplay'
 const TextSimilarityForm: React.FC = () => {
 	const [sen1, setSen1] = useState<string>('')
 	const [sen2, setSen2] = useState<string>('')
-	const [model, setModel] = useState<string>('gemini') // default gemini
+	const [threshold, setThreshold] = useState<number>(0.7)
+	const [model, setModel] = useState<string>('bge') // default gemini
 	const [loading, setLoading] = useState<boolean>(false)
 	const [result, setResult] = useState<ApiResponse>([])
 	const [error, setError] = useState<string | null>(null)
 	const [currentChunk, setCurrentChunk] = useState(0)	// Pagination index
-	const [mode, setMode] = useState<InputMode>('text')
-	const [file, setFile] = useState<File>()
+	const [mode1, setMode1] = useState<InputMode>('text')
+	const [mode2, setMode2] = useState<InputMode>('text')
+	const [file1, setFile1] = useState<File[]>([])
+	const [file2, setFile2] = useState<File[]>([])
 	const [hoveredSen1, setHoveredSen1] = useState<number | null>(null)
 	const [hoveredSen2, setHoveredSen2] = useState<number | null>(null)
 
+	const runStream = async (response: Response) => {
+		if (!response.ok) {
+			const errText = await response.text()
+			throw new Error(errText || 'Upload file thất bại')
+		}
+
+		if (!response.body) throw new Error('Backend không trả về stream')
+
+		const reader = response.body.getReader()
+		const decoder = new TextDecoder()
+		let buffer = ''
+
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) break
+
+			buffer += decoder.decode(value, { stream : true })
+
+			// Tách từng dòng JSON (backend yield từng chunk một dòng)
+			const lines = buffer.split('\n')
+			buffer = lines.pop() || ''   // giữ phần chưa hoàn chỉnh
+
+			for (const line of lines) {
+				const trimmed = line.trim()
+				if (trimmed) {
+					try {
+						const chunk: ApiChunk = JSON.parse(trimmed)
+						setResult(prev => [...prev, chunk])
+					} catch (parseErr) {
+						console.warn('Không parse được chunk:', trimmed)
+					}
+				}
+			}
+		}
+		setLoading(false)
+	}
+
 	const handleSubmit = async (e: any) => {
 		e.preventDefault()
-		if (!sen1.trim() || (mode === 'text' && !sen2.trim()) || (mode === 'file' && !file)) {
-			setError('Vui lòng nhập cả hai đoạn văn bản!')
+		if ((mode1 === 'text' && !sen1.trim()) || 
+			(mode1 === 'file' && file1.length === 0) || 
+			(mode2 === 'text' && !sen2.trim()) || 
+			(mode2 === 'file' && file2.length === 0)) {
+			setError('Vui lòng nhập đầy đủ đầu vào!')
 			return
 		}
 
@@ -31,67 +74,97 @@ const TextSimilarityForm: React.FC = () => {
 		setCurrentChunk(0)
 
 		try {
-			if (mode === 'text') {
+			if (mode1 === 'text' && mode2 === 'text') {
 				const response = await axios.post(
 					import.meta.env.VITE_BACKEND_URL + '/sentences', 
-					{ sen1, sen2, model }, 
+					{ sen1, sen2, model, threshold }, 
 					{ timeout: 60000 }
 				)
 				setResult([response.data])
 			}
-			else if (mode === 'file') {
+			else if (mode1 === 'file' && mode2 === 'text') {
 				const formData = new FormData()
-				formData.append('sen1', sen1)
-				formData.append('file', file!)
+				formData.append('file', file1[0])
+				formData.append('sen', sen2)
 				formData.append('model', model)
+				formData.append('threshold', threshold.toString())
 
 				const response = await fetch(
-					import.meta.env.VITE_BACKEND_URL + '/files', 
+					import.meta.env.VITE_BACKEND_URL + '/files/file_sen', 
+					{ method: 'POST', body: formData }
+				)
+				
+				await runStream(response)
+			}
+			else if (mode1 === 'text' && mode2 === 'file') {
+				const formData = new FormData()
+				formData.append('sen', sen1)
+				file2.forEach(file => {
+					formData.append('files', file)
+				})
+				formData.append('model', model)
+				formData.append('threshold', threshold.toString())
+
+				const response = await fetch(
+					import.meta.env.VITE_BACKEND_URL + '/files/sen_files', 
 					{ method: 'POST', body: formData }
 				)
 
-				if (!response.ok) {
-					const errText = await response.text()
-					throw new Error(errText || 'Upload file thất bại')
-				}
+				await runStream(response)
+			}
+			else if (mode1 === 'file' && mode2 === 'file') {
+				const formData = new FormData()
 
-				if (!response.body) throw new Error('Backend không trả về stream')
+				formData.append('file1', file1[0])
+				file2.forEach(file => {
+					formData.append('file2', file)
+				})
+				formData.append('model', model)
+				formData.append('threshold', threshold.toString())
 
-				const reader = response.body.getReader()
-				const decoder = new TextDecoder()
-				let buffer = ''
+				const response = await fetch(
+					import.meta.env.VITE_BACKEND_URL + '/files/file_files', 
+					{ method: 'POST', body: formData }
+				)
 
-				while (true) {
-					const { done, value } = await reader.read()
-					if (done) break
+				await runStream(response)
+			}
+			else if (mode1 === 'file' && mode2 === 'db') {
+				const formData = new FormData()
 
-					buffer += decoder.decode(value, { stream: true })
+				formData.append('file', file1[0])
+				formData.append('model', model)
+				formData.append('threshold', threshold.toString())
 
-					// Tách từng dòng JSON (backend yield từng chunk một dòng)
-					const lines = buffer.split('\n')
-					buffer = lines.pop() || ''   // giữ phần chưa hoàn chỉnh
+				const response = await fetch(
+					import.meta.env.VITE_BACKEND_URL + '/db/files', 
+					{ method: 'POST', body: formData }
+				)
 
-					for (const line of lines) {
-						const trimmed = line.trim()
-						if (trimmed) {
-							try {
-								const chunk: ApiChunk = JSON.parse(trimmed)
-								setResult(prev => [...prev, chunk])
-							} catch (parseErr) {
-								console.warn('Không parse được chunk:', trimmed)
-							}
-						}
-					}
-				}
-				setLoading(false)
+				await runStream(response)
+			}
+			else if (mode1 === 'text' && mode2 === 'db') {
+				const formData = new FormData()
+
+				formData.append('sen', sen1)
+				formData.append('model', model)
+				formData.append('threshold', threshold.toString())
+
+				const response = await fetch(
+					import.meta.env.VITE_BACKEND_URL + '/db/sen', 
+					{ method: 'POST', body: formData }
+				)
+
+				await runStream(response)
 			}
 			
 		} catch (err: any) {
 			console.log(err.response?.data)
 			setError(err.response?.data?.detail || 'Có lỗi xảy ra khi gọi API. Kiểm tra backend!')
 			console.error(err)
+			setLoading(false)
 		} finally {
-			if (mode === 'text') setLoading(false)
+			if (mode2 === 'text') setLoading(false)
 		}
 	}
 
@@ -102,14 +175,20 @@ const TextSimilarityForm: React.FC = () => {
 		<InputForm 
 			sen1={sen1}
 			sen2={sen2}
+			file2={file2}
 			model={model}
-			mode={mode}
+			threshold={threshold}
+			mode1={mode1}
+			mode2={mode2}
 			loading={loading}
 			setSen1={setSen1}
 			setSen2={setSen2}
 			setModel={setModel}
-			setMode={setMode}
-			setFile={setFile}
+			setThreshold={setThreshold}
+			setMode1={setMode1}
+			setMode2={setMode2}
+			setFile1={setFile1}
+			setFile2={setFile2}
 			handleSubmit={handleSubmit}
 		/>
 
