@@ -29,3 +29,10 @@ async def sentence_handler(
         service.similarity_cal(file, model, threshold),
         media_type="text/plain"    
     )
+
+@router.post('/update_db')
+async def sentence_handler(
+    files: List[UploadFile] = File(...)
+):
+    result = await service.update_db(files)
+    return result

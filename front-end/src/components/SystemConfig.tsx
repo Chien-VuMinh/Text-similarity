@@ -27,7 +27,6 @@ function SystemConfig({
                 >
                     <option value="bge">BGE</option>
                     <option value="gemini">Gemini</option>
-                    <option value="qwen">Qwen</option>
                 </select>
                 </div>
 

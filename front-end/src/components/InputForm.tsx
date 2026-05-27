@@ -22,11 +22,12 @@ interface InputFormProps {
 	setFile1: React.Dispatch<React.SetStateAction<File[]>>
     setFile2: React.Dispatch<React.SetStateAction<File[]>>
     handleSubmit: (e: React.SubmitEvent) => void
+	handleUpdateDB?: () => void
 }
 
 function InputForm({
     sen1, sen2, file2, model, threshold, mode1, mode2, loading,
-    setSen1, setSen2, setModel, setThreshold, setMode1, setMode2, setFile1, setFile2, handleSubmit,
+    setSen1, setSen2, setModel, setThreshold, setMode1, setMode2, setFile1, setFile2, handleSubmit, handleUpdateDB
     } : InputFormProps) {
     return (
         <form
@@ -49,9 +50,11 @@ function InputForm({
 				    mode2={mode2}
 					sen2={sen2}
 					file2={file2}
+					loading={loading}
 					setSen2={setSen2}
 					setFile2={setFile2}
 					setMode2={setMode2}
+					handleUpdateDB={handleUpdateDB}
 				/>
 
 			</div>

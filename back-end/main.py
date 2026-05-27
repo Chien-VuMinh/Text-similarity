@@ -12,7 +12,7 @@ from application.initializer import IncludeAPIRouter, ollama_controller, embeddi
 async def lifespan(app: FastAPI):
     print("[App]: Setting up system")
 
-    await ollama_controller.start_ollama()
+    # await ollama_controller.start_ollama()
     await  embedding_controller.prepare_model()
 
     print("[App]: Setting up finished")

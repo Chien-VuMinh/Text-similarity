@@ -10,7 +10,9 @@ from application.main.infrastructure.embedding.embedding_interface import Embedd
 class LocalEmbedding(EmbeddingOperation, ABC):
     def __init__(self):
         super(LocalEmbedding, self).__init__()
-        self.client = ollama.AsyncClient()
+
+        self.client = ollama.AsyncClient("http://ollama:11434")
+        # self.client = ollama.AsyncClient()
 
     async def prepare_model(self, api_key = None):
         print("[Local Embedding]: Preparing local models...")

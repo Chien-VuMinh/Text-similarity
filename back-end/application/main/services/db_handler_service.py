@@ -19,7 +19,10 @@ from application.initializer import embedding_controller
 class FilesHandlerService(object):
     def __init__(self):
         self.client = chromadb.PersistentClient(path=settings.APP_CONFIG.VEC_DB)
-        self.collection = self.client.get_collection(name="vec_db")
+        try:
+            self.collection = self.client.get_collection(name="vec_db")
+        except:
+            pass
 
     async def embedding_sen(self, sen: List[str], model_tag: str):        
         try:
@@ -136,6 +139,60 @@ class FilesHandlerService(object):
                     "chunk_id": i // chunk_size + 1
                 }
             ) + '\n'
+
+
+    async def update_db(self, files: List[UploadFile]):
+        try:
+            self.client.delete_collection(name="vec_db")
+        except:
+            pass
+
+        self.collection = self.client.create_collection(
+            name="vec_db",
+            metadata={"hnsw:space": "cosine"}
+        )
+
+        all_documents = []
+        all_embeddings = []
+        all_ids = []
+
+        for idx_file, file in enumerate(files):
+            try:              
+                splitted_sen, clean_sen = await asyncio.to_thread(
+                    self.get_file_content, file
+                )
+
+                if not clean_sen:
+                    print(f"File {file.filename} không có nội dung, bỏ qua.")
+                    continue
+
+                embeddings = await self.embedding_sen(clean_sen, model_tag="bge")
+
+                for i, (doc, emb) in enumerate(zip(splitted_sen, embeddings)):
+                    doc_id = f"doc_{idx_file}_{i}"
+                    all_documents.append(doc)
+                    all_embeddings.append(emb)
+                    all_ids.append(doc_id)
+
+            except Exception as e:
+                print(f"Lỗi xử lý file {file.filename}: {e}")
+                continue
+        
+        if all_documents:
+            self.collection.add(
+                documents=all_documents,
+                embeddings=all_embeddings,
+                ids=all_ids
+            )
+        else:
+            print("Không có dữ liệu nào được thêm vào database.")
+
+        return {
+            "status": "success",
+            "message": f"Đã cập nhật database thành công với {len(all_documents)} câu.",
+            "total_files": len(files),
+            "total_sentences": len(all_documents)
+        }
 
 service = FilesHandlerService()
 

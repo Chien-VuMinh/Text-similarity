@@ -21,6 +21,42 @@ const TextSimilarityForm: React.FC = () => {
 	const [hoveredSen1, setHoveredSen1] = useState<number | null>(null)
 	const [hoveredSen2, setHoveredSen2] = useState<number | null>(null)
 
+	const handleUpdateDB = async () => {
+		if (file2.length === 0) return
+
+		setLoading(true)
+		setError(null)
+
+		try {
+			const formData = new FormData()
+			file2.forEach(file => {
+				formData.append('files', file)
+			})
+
+			const response = await fetch(
+			import.meta.env.VITE_BACKEND_URL + '/db/update_db',
+				{ 
+					method: 'POST', 
+					body: formData 
+				}
+			)
+
+			if (!response.ok) {
+			const errText = await response.text()
+			throw new Error(errText || 'Cập nhật database thất bại')
+			}
+
+			alert('Cập nhật database thành công!') 
+			setFile2([])
+
+		} catch (err: any) {
+			setError(err.message || 'Có lỗi khi cập nhật database')
+			console.error(err)
+		} finally {
+			setLoading(false)
+		}
+	}
+
 	const runStream = async (response: Response) => {
 		if (!response.ok) {
 			const errText = await response.text()
@@ -190,6 +226,7 @@ const TextSimilarityForm: React.FC = () => {
 			setFile1={setFile1}
 			setFile2={setFile2}
 			handleSubmit={handleSubmit}
+			handleUpdateDB={handleUpdateDB}
 		/>
 
 		{/* HIển thị kết quả */}
